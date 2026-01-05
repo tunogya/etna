@@ -51,9 +51,6 @@ CREATE TABLE IF NOT EXISTS window_features (
     trend_bucket INTEGER,
     data_version INTEGER NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS idx_features_vol_bucket ON window_features(vol_bucket);
-CREATE INDEX IF NOT EXISTS idx_features_trend_bucket ON window_features(trend_bucket);
 `
 
 // CreateWindowOutcomesTable creates the window outcomes cache table

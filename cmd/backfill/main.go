@@ -200,7 +200,7 @@ func parseFlags() Config {
 
 	flag.StringVar(&cfg.CSVPath, "csv", "", "Path to CSV file with candle data")
 	flag.StringVar(&cfg.Symbol, "symbol", "BTCUSDT", "Trading symbol")
-	flag.StringVar(&cfg.Timeframe, "timeframe", "1m", "Timeframe")
+	flag.StringVar(&cfg.Timeframe, "timeframe", "1w", "Timeframe")
 	flag.IntVar(&cfg.WindowLength, "window", 60, "Window length (number of candles)")
 	flag.IntVar(&cfg.StepSize, "step", 5, "Step size between windows")
 	flag.IntVar(&cfg.FeatureVersion, "version", 1, "Feature version")
