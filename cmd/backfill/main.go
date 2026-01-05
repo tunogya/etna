@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/tunogya/etna/pkg/data"
@@ -198,11 +197,11 @@ func main() {
 func parseFlags() Config {
 	cfg := Config{}
 
-	flag.StringVar(&cfg.CSVPath, "csv", "", "Path to CSV file with candle data")
+	flag.StringVar(&cfg.CSVPath, "csv", "", "Path to CSV file with candle data (default: data/{symbol}_{timeframe}.csv)")
 	flag.StringVar(&cfg.Symbol, "symbol", "BTCUSDT", "Trading symbol")
-	flag.StringVar(&cfg.Timeframe, "timeframe", "1w", "Timeframe")
-	flag.IntVar(&cfg.WindowLength, "window", 60, "Window length (number of candles)")
-	flag.IntVar(&cfg.StepSize, "step", 5, "Step size between windows")
+	flag.StringVar(&cfg.Timeframe, "timeframe", "1d", "Timeframe")
+	flag.IntVar(&cfg.WindowLength, "window", 7, "Window length (number of candles)")
+	flag.IntVar(&cfg.StepSize, "step", 1, "Step size between windows")
 	flag.IntVar(&cfg.FeatureVersion, "version", 1, "Feature version")
 	flag.StringVar(&cfg.DuckDBPath, "duckdb", "etna.duckdb", "DuckDB file path")
 	flag.StringVar(&cfg.MilvusAddr, "milvus", "localhost:19530", "Milvus server address")
@@ -212,9 +211,7 @@ func parseFlags() Config {
 	flag.Parse()
 
 	if cfg.CSVPath == "" {
-		fmt.Println("Usage: backfill -csv <path> [options]")
-		flag.PrintDefaults()
-		os.Exit(1)
+		cfg.CSVPath = fmt.Sprintf("data/%s_%s.csv", cfg.Symbol, cfg.Timeframe)
 	}
 
 	return cfg

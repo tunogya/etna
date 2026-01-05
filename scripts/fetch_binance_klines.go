@@ -13,38 +13,69 @@ import (
 )
 
 func main() {
+	// Parse flags
 	symbol := flag.String("symbol", "BTCUSDT", "Trading symbol")
 	interval := flag.String("interval", "1w", "Kline interval (1m, 5m, 1h, 1d, 1w, etc.)")
-	limit := flag.Int("limit", 1000, "Number of klines to fetch (max 1000)")
+	limit := flag.Int("limit", 1000, "Number of klines to fetch per request (max 1000)")
 	output := flag.String("output", "", "Output CSV file path")
+	all := flag.Bool("all", false, "Fetch all available history")
+	startTime := flag.Int64("startTime", 1502928000000, "Start time in ms (default: 2017-08-17)")
 	flag.Parse()
 
 	if *output == "" {
 		*output = fmt.Sprintf("data/%s_%s.csv", *symbol, *interval)
 	}
 
-	url := fmt.Sprintf("https://api.binance.com/api/v3/klines?symbol=%s&interval=%s&limit=%d",
-		*symbol, *interval, *limit)
+	var allKlines [][]interface{}
+	currentStartTime := *startTime
 
-	log.Printf("Fetching %s %s klines from Binance...", *symbol, *interval)
+	for {
+		url := fmt.Sprintf("https://api.binance.com/api/v3/klines?symbol=%s&interval=%s&limit=%d",
+			*symbol, *interval, *limit)
 
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatalf("Failed to fetch data: %v", err)
+		if *all {
+			url += fmt.Sprintf("&startTime=%d", currentStartTime)
+		}
+
+		log.Printf("Fetching %s %s klines from Binance (startTime: %d)...", *symbol, *interval, currentStartTime)
+
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Fatalf("Failed to fetch data: %v", err)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close() // Close immediately after reading
+		if err != nil {
+			log.Fatalf("Failed to read response: %v", err)
+		}
+
+		var klines [][]interface{}
+		if err := json.Unmarshal(body, &klines); err != nil {
+			log.Fatalf("Failed to parse JSON: %v", err)
+		}
+
+		if len(klines) == 0 {
+			break
+		}
+
+		allKlines = append(allKlines, klines...)
+		log.Printf("Fetched %d klines (Total: %d)", len(klines), len(allKlines))
+
+		if !*all {
+			break
+		}
+
+		// Update startTime for next batch (last candle close time + 1ms)
+		lastCandle := klines[len(klines)-1]
+		closeTime := int64(lastCandle[6].(float64))
+		currentStartTime = closeTime + 1
+
+		// Simple rate limiting
+		// time.Sleep(100 * time.Millisecond)
 	}
-	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Failed to read response: %v", err)
-	}
-
-	var klines [][]interface{}
-	if err := json.Unmarshal(body, &klines); err != nil {
-		log.Fatalf("Failed to parse JSON: %v", err)
-	}
-
-	log.Printf("Fetched %d klines", len(klines))
+	log.Printf("Total fetched: %d klines", len(allKlines))
 
 	// Create output directory if needed
 	if err := os.MkdirAll("data", 0755); err != nil {
@@ -65,7 +96,7 @@ func main() {
 	writer.Write([]string{"symbol", "timeframe", "open_time", "close_time", "open", "high", "low", "close", "volume", "trades"})
 
 	// Write data
-	for _, k := range klines {
+	for _, k := range allKlines {
 		// Binance kline format:
 		// [0] Open time (ms), [1] Open, [2] High, [3] Low, [4] Close, [5] Volume,
 		// [6] Close time (ms), [7] Quote volume, [8] Trades, ...
